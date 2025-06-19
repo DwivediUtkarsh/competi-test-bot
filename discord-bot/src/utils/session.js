@@ -6,19 +6,34 @@ import jwt from 'jsonwebtoken';
  * @param {object} userInfo - Discord user information
  * @param {object} guildInfo - Discord guild information  
  * @param {object} marketData - Market data including marketId and question
+ * @param {object} interactionContext - Additional Discord interaction context
  * @returns {Promise<string>} Session URL or fallback URL
  */
-export async function createSession(userInfo, guildInfo, marketData) {
+export async function createSession(userInfo, guildInfo, marketData, interactionContext = {}) {
   try {
-    // Prepare the request payload matching Next.js API expectations
+    // Prepare enhanced session payload with Discord context
     const sessionPayload = {
       userId: userInfo.id,                    // String: Discord user ID
       marketId: marketData.marketId,          // String: Market ID
-      discordUser: userInfo,                  // Optional: Full Discord user object
-      guildName: guildInfo?.name || 'Unknown Guild'  // Optional: Guild name
+      discordUser: {
+        id: userInfo.id,
+        username: userInfo.username,
+        discriminator: userInfo.discriminator,
+        avatar: userInfo.avatar
+      },
+      guildName: guildInfo?.name || 'Unknown Guild',
+      // Enhanced Discord context for webhook notifications
+      guildId: guildInfo?.id,
+      channelId: interactionContext.channelId,
+      channelName: interactionContext.channelName,
+      market: {
+        id: marketData.marketId,
+        question: marketData.question || marketData.title,
+        title: marketData.title || marketData.question
+      }
     };
 
-    console.log('Creating session with payload:', JSON.stringify(sessionPayload, null, 2));
+    console.log('Creating enhanced session with payload:', JSON.stringify(sessionPayload, null, 2));
 
     // Updated to use Next.js API endpoint
     const sessionApiUrl = process.env.SESSION_API_URL || 'http://localhost:3000';

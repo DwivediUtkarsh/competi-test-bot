@@ -3,12 +3,22 @@ import { createClient, RedisClientType } from 'redis';
 
 // Session management types
 export interface SessionData {
+  jti: string;
   userId: string;
   marketId: string;
   discordUser?: any;
   guildName?: string;
-  status: 'UNUSED' | 'USED';
-  createdAt: string;
+  // Enhanced Discord context for webhook notifications
+  guildId?: string;
+  channelId?: string;
+  channelName?: string;
+  market?: {
+    id: string;
+    question: string;
+    title: string;
+  };
+  status?: 'UNUSED' | 'USED';
+  createdAt?: string;
   expiresAt: string;
   usedAt?: string;
 }

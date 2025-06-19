@@ -104,10 +104,11 @@ export async function getSessionStatus(token: string): Promise<ApiResponse<{
  */
 export async function placeBet(token: string, betRequest: BetRequest): Promise<ApiResponse<{
   bet: Bet;
+  webhookSent?: boolean;
   redirect?: string;
 }>> {
   try {
-    const response: AxiosResponse<ApiResponse> = await apiClient.post('/bet/place', betRequest, {
+    const response: AxiosResponse<ApiResponse> = await apiClient.post('/api/bet/place', betRequest, {
       headers: {
         'Authorization': `Bearer ${token}`,
       },

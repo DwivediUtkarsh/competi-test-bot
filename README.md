@@ -1,6 +1,6 @@
 # 🎯 Polymarket Discord Bot & Betting Platform
 
-A comprehensive Discord-to-Web betting system that integrates Discord bot commands with a modern web-based betting interface, featuring real-time market data from Polymarket's CLOB (Central Limit Order Book) WebSocket API.
+A comprehensive Discord-to-Web betting system that integrates Discord bot commands with a modern web-based betting interface, featuring real-time market data from Polymarket's CLOB (Central Limit Order Book) WebSocket API and **live Discord webhook notifications** for bet confirmations.
 
 ## 🏗️ Architecture Overview
 
@@ -11,16 +11,17 @@ A comprehensive Discord-to-Web betting system that integrates Discord bot comman
 │ /markets cmd    │◄──►│ JWT + Redis     │◄──►│ Next.js App     │
 │ Category Select │    │ Token Validation│    │ Live WebSocket  │
 │ Market Display  │    │ Secure Sessions │    │ Real-time Odds  │
+│ 🔔 Webhook URL  │    │ Enhanced Context│    │ Bet Placement   │
 └─────────────────┘    └─────────────────┘    └─────────────────┘
          │                       │                       │
          └───────────────────────┼───────────────────────┘
                                  ▼
-                    ┌─────────────────┐
-                    │  Polymarket API │
-                    │                 │
-                    │ REST + CLOB WS  │
-                    │ Live Odds Feed  │
-                    └─────────────────┘
+                    ┌─────────────────┐    ┌─────────────────┐
+                    │  Polymarket API │    │ Discord Webhook │
+                    │                 │    │                 │
+                    │ REST + CLOB WS  │    │ 📢 Live Bet     │
+                    │ Live Odds Feed  │    │ Notifications   │
+                    └─────────────────┘    └─────────────────┘
 ```
 
 ## 📋 Project Structure
@@ -91,10 +92,17 @@ polymarket-bot/
 - **Interactive Buttons**: Direct links to betting interface
 - **Smart Filtering**: Removes expired markets and wide spreads
 
-#### **🔐 Secure Session Management**
+#### **🔐 Enhanced Session Management**
 - **Single-use Tokens**: JWT tokens with 5-minute expiry
-- **User Context**: Preserves Discord user info and server context
+- **Extended User Context**: Preserves Discord user info, server context, and channel details
 - **Secure Handoff**: Seamless transition from Discord to web interface
+- **Rich Session Data**: Includes guild name, channel ID, and complete market information
+
+#### **🔔 Live Discord Notifications**
+- **Webhook Integration**: Real-time bet confirmation messages posted to Discord
+- **Rich Embeds**: Beautifully formatted bet notifications with all details
+- **Instant Feedback**: Immediate confirmation in the Discord channel where bet was initiated
+- **Contextual Information**: Includes server name, user mention, and betting details
 
 ### 🌐 Web Betting Interface Features
 
@@ -109,6 +117,7 @@ polymarket-bot/
 - **Selection Feedback**: Immediate visual feedback for outcome selection
 - **Bet Calculator**: Real-time profit calculations and bet summaries
 - **Two-step Confirmation**: Review → Confirm flow for bet placement
+- **🔔 Live Discord Integration**: Automatic webhook notifications on successful bets
 
 #### **📊 Live Market Data Integration**
 
@@ -131,11 +140,19 @@ polymarket-bot/
 - **Trade Details**: Price, size, timestamp for each transaction
 - **Rolling History**: Last 50 trades with automatic scrolling
 
-#### **🛡️ Security & Session Management**
+#### **🛡️ Enhanced Security & Session Management**
 - **JWT Validation**: Secure token verification for all requests
 - **Session Expiry**: Visual countdown with automatic redirect
 - **CORS Protection**: Secure cross-origin request handling
 - **Error Boundaries**: Graceful error handling and user feedback
+- **Rich Context Preservation**: Maintains Discord user and server information throughout betting flow
+
+#### **🔔 Discord Webhook Notifications**
+- **Instant Bet Confirmations**: Real-time notifications posted to Discord when bets are placed
+- **Rich Embed Format**: Professional Discord embeds with comprehensive bet details
+- **Contextual Information**: Includes user mention, server name, and betting specifics
+- **Error Handling**: Graceful fallback if webhook delivery fails
+- **Multi-channel Support**: Notifications sent to the channel where bet was initiated
 
 #### **⚡ Performance Optimizations**
 - **WebSocket Efficiency**: Single connection for multiple market subscriptions
@@ -152,6 +169,7 @@ polymarket-bot/
 - npm or yarn
 - Discord Developer Account
 - Redis instance (local or cloud)
+- Discord Webhook URL (for bet notifications)
 ```
 
 ### 2. 🔧 Environment Setup
@@ -169,7 +187,7 @@ npm install
 # Setup Betting UI  
 cd ../betting-ui
 cp .env.example .env
-# Configure: NEXT_PUBLIC_API_URL, SESSION_SECRET
+# Configure: NEXT_PUBLIC_API_URL, SESSION_SECRET, DISCORD_WEBHOOK_URL
 npm install
 ```
 
@@ -197,20 +215,28 @@ npm run dev
 NEXT_PUBLIC_API_URL=http://localhost:3001
 SESSION_SECRET=your_jwt_secret_here
 NEXT_PUBLIC_CLOB_WS_URL=wss://ws-subscriptions-clob.polymarket.com/ws/market
+DISCORD_WEBHOOK_URL=https://discord.com/api/webhooks/YOUR_WEBHOOK_URL_HERE
 
 # Start development server
 npm run dev
 ```
 
-### 5. 🎯 Testing the Full Flow
+### 5. 🔔 Discord Webhook Setup
 
-1. **Discord**: Use `/markets` command in your Discord server
-2. **Select Category**: Choose NBA, MLB, etc. from dropdown
-3. **Browse Markets**: Navigate through paginated market listings  
-4. **Click "Bet"**: Click betting button for desired market
-5. **Web Interface**: Automatically opens secure betting page
-6. **Live Odds**: View real-time odds with WebSocket connection
-7. **Place Bet**: Select outcome, enter amount, confirm bet
+#### **Creating a Discord Webhook**
+1. **Go to your Discord server** → Right-click on desired channel → Edit Channel
+2. **Navigate to Integrations** → Webhooks → New Webhook
+3. **Configure Webhook**:
+   - Name: "Polymarket Bot Notifications"
+   - Channel: Select the channel for bet notifications
+   - Copy Webhook URL
+4. **Add to Environment**: Set `DISCORD_WEBHOOK_URL` in your `.env.local` file
+
+#### **Webhook Features**
+- **Rich Embeds**: Professional-looking bet confirmations
+- **Real-time Delivery**: Instant notifications upon bet placement
+- **Contextual Information**: User mentions, server details, and bet specifics
+- **Error Resilience**: Continues to function even if webhook fails
 
 ## 🔧 Development & Testing
 
@@ -267,19 +293,34 @@ npm run type-check   # TypeScript validation
 - **Usage**: `/markets` → Select category → Browse → Click "Bet"
 - **Categories**: NBA, MLB, NHL, FIFA, UFC, ESPORTS
 - **Output**: Paginated market listings with betting buttons
+- **Enhanced Context**: Preserves channel and server information for webhook notifications
 
 ### 🌐 Web API Endpoints
 
 #### `GET /api/session/validate/:token`
 - **Purpose**: Validate betting session token
-- **Response**: Session data with user context and market info
+- **Response**: Enhanced session data with Discord context and market info
 - **Security**: JWT validation with expiry checking
+- **Enhanced Data**: Includes guild ID, channel ID, and user details for webhook delivery
 
 #### `POST /api/bet/place`
-- **Purpose**: Place a bet on selected outcome
+- **Purpose**: Place a bet on selected outcome with Discord notification
 - **Auth**: Required (JWT token)
 - **Payload**: Outcome selection and bet amount
 - **Response**: Bet confirmation with transaction details
+- **🔔 New Feature**: Automatically sends Discord webhook notification on success
+- **Notification Content**:
+  - User mention and bet amount
+  - Selected outcome and market details  
+  - Potential winnings and profit calculations
+  - Timestamp and server context
+  - Rich embed formatting with colors and emojis
+
+#### `POST /api/session/create`
+- **Purpose**: Create enhanced betting session with Discord context
+- **Enhanced Features**: Stores complete Discord context for webhook delivery
+- **Session Data**: Includes guild name, channel details, and user information
+- **Security**: Single-use tokens with 5-minute expiry
 
 ### 🔌 WebSocket Integration
 
@@ -312,7 +353,7 @@ npm run type-check   # TypeScript validation
 - **🟠 Reconnecting**: Attempting to restore connection  
 - **🔴 Disconnected**: No live data available
 
-### 🎯 Betting Interface
+### 🎯 Enhanced Betting Interface
 
 #### **Enhanced Clickability**
 - **Hover Effects**: Cards lift and scale on hover (105%)
@@ -320,25 +361,45 @@ npm run type-check   # TypeScript validation
 - **Clear CTAs**: "👆 Tap to Select" and "🎯 Selected for Betting"
 - **Status Indicators**: Color-coded selection dots and badges
 
-#### **Bet Calculation**
+#### **Bet Calculation & Confirmation**
 - **Real-time Updates**: Instant profit calculations as user types
 - **Potential Winnings**: Clear display of possible returns
 - **Profit Breakdown**: Shows net profit after initial bet
 - **Two-step Process**: Review → Confirm for safety
+- **🔔 Discord Integration**: Automatic notification delivery upon successful bet placement
 
-## 🔐 Security Implementation
+#### **🔔 Live Discord Notifications**
+- **Rich Embed Format**: Professional Discord embeds with comprehensive details
+- **Instant Delivery**: Real-time webhook notifications to Discord channel
+- **Comprehensive Information**:
+  - 💰 **Amount**: Bet amount with formatting
+  - 🎲 **Outcome**: Selected betting outcome
+  - 📊 **Market**: Market question/title
+  - 💵 **Potential Win**: Calculated potential winnings
+  - 📈 **Profit**: Net profit calculation
+  - ⏰ **Timestamp**: EST formatted timestamp
+  - 🏆 **Server Context**: Discord server name and user mention
+
+## 🔐 Enhanced Security Implementation
 
 ### 🛡️ Session Security
 - **Single-use Tokens**: JWT tokens become invalid after use
 - **Short Expiry**: 5-minute session windows
-- **User Context**: Preserves Discord identity through transition
-- **Secure Handoff**: Encrypted data transfer between services
+- **Enhanced User Context**: Preserves complete Discord identity and server context
+- **Secure Handoff**: Encrypted data transfer between services with rich context preservation
 
 ### 🔒 API Security  
 - **CORS Protection**: Configured allowed origins
 - **Rate Limiting**: Prevents abuse and spam
 - **Input Validation**: Sanitized user inputs
 - **Error Handling**: Secure error messages without data leakage
+- **Webhook Security**: Secure webhook URL handling with error resilience
+
+### 🔔 Webhook Security
+- **URL Protection**: Webhook URLs stored securely in environment variables
+- **Error Handling**: Graceful fallback if webhook delivery fails
+- **Rate Limiting**: Prevents webhook spam and abuse
+- **Content Validation**: Ensures only valid bet data triggers notifications
 
 ## 🚀 Deployment Options
 
@@ -369,6 +430,10 @@ SESSION_API_URL=https://your-api-domain.com
 NEXT_PUBLIC_API_URL=https://your-api-domain.com
 SESSION_SECRET=strong_production_secret
 NEXT_PUBLIC_CLOB_WS_URL=wss://ws-subscriptions-clob.polymarket.com/ws/market
+DISCORD_WEBHOOK_URL=https://discord.com/api/webhooks/YOUR_PRODUCTION_WEBHOOK_URL
+
+# Optional: Multiple webhook URLs for different servers
+DISCORD_WEBHOOK_URL_BACKUP=https://discord.com/api/webhooks/BACKUP_WEBHOOK_URL
 ```
 
 ## 🤝 Contributing
@@ -394,12 +459,14 @@ NEXT_PUBLIC_CLOB_WS_URL=wss://ws-subscriptions-clob.polymarket.com/ws/market
 - **Live Odds Updates**: Real-time (< 100ms latency)
 - **Page Load**: < 3 seconds for betting interface
 - **Bet Placement**: < 5 seconds end-to-end
+- **🔔 Webhook Delivery**: < 2 seconds from bet confirmation to Discord notification
 
 ### 📈 Scalability Features
 - **Horizontal Scaling**: Stateless design supports multiple instances
 - **Caching**: Redis for session management and market data
 - **WebSocket Pooling**: Efficient connection management
 - **Database Optimization**: Indexed queries for fast market lookups
+- **Webhook Resilience**: Graceful handling of webhook failures without affecting bet placement
 
 ## 🆘 Troubleshooting
 
@@ -424,6 +491,24 @@ npx ts-node scripts/clob-websocket-test.ts <market_id>
 # Verify JWT secret matches between services
 # Check token expiry (5-minute limit)  
 # Ensure Redis is running and accessible
+```
+
+#### **🔔 Webhook Notifications Not Working**
+```bash
+# Verify DISCORD_WEBHOOK_URL is correctly set
+# Test webhook URL with a simple POST request
+curl -X POST "YOUR_WEBHOOK_URL" -H "Content-Type: application/json" -d '{"content":"Test message"}'
+# Check Discord channel permissions for webhook
+# Verify webhook hasn't been deleted or disabled in Discord
+# Check application logs for webhook error messages
+```
+
+#### **Enhanced Session Context Issues**
+```bash
+# Verify all Discord context fields are properly captured
+# Check Redis storage for complete session data
+# Ensure session includes: guildId, channelId, channelName, market info
+# Validate JWT payload contains essential user context
 ```
 
 ### 📞 Support & Feedback

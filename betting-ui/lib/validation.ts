@@ -84,11 +84,32 @@ export const validateBetPlacement = (req: NextApiRequest): ValidationError | nul
   const { outcome, amount } = req.body;
   const errors: string[] = [];
 
-  // Validate outcome
+  // Validate outcome object
   if (!outcome) {
     errors.push('outcome is required');
-  } else if (!['YES', 'NO'].includes(outcome)) {
-    errors.push('outcome must be either "YES" or "NO"');
+  } else if (typeof outcome !== 'object') {
+    errors.push('outcome must be an object');
+  } else {
+    // Validate outcome object properties
+    if (!outcome.id) {
+      errors.push('outcome.id is required');
+    } else if (typeof outcome.id !== 'string') {
+      errors.push('outcome.id must be a string');
+    }
+
+    if (!outcome.title) {
+      errors.push('outcome.title is required');
+    } else if (typeof outcome.title !== 'string') {
+      errors.push('outcome.title must be a string');
+    }
+
+    if (outcome.price === undefined || outcome.price === null) {
+      errors.push('outcome.price is required');
+    } else if (typeof outcome.price !== 'number') {
+      errors.push('outcome.price must be a number');
+    } else if (outcome.price <= 0 || outcome.price > 1) {
+      errors.push('outcome.price must be between 0 and 1');
+    }
   }
 
   // Validate amount

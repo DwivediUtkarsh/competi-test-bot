@@ -610,7 +610,11 @@ const command = {
 
       const sessionUrl = await createSession(userInfo, guildInfo, {
         marketId: marketId,
-        question: liveMarket?.question || 'Unknown Market'
+        question: liveMarket?.question || 'Unknown Market',
+        title: liveMarket?.title || liveMarket?.question || 'Unknown Market'
+      }, {
+        channelId: interaction.channel?.id,
+        channelName: interaction.channel?.name
       });
 
       const embed = new EmbedBuilder()

@@ -17,6 +17,15 @@ export interface SessionData {
   usedAt?: string;
   discordUser?: DiscordUser;
   guildName?: string;
+  // Enhanced Discord context for webhook notifications
+  guildId?: string;
+  channelId?: string;
+  channelName?: string;
+  market?: {
+    id: string;
+    question: string;
+    title: string;
+  };
 }
 
 // Market Types
