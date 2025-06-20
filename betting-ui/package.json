@@ -15,6 +15,7 @@
     "test:redis": "node scripts/migrate-to-upstash.js"
   },
   "dependencies": {
+    "@headlessui/react": "^2.2.4",
     "@types/jsonwebtoken": "^9.0.5",
     "@types/node": "^20.10.5",
     "@types/react": "^18.2.45",

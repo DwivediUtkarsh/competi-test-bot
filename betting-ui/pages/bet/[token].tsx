@@ -740,44 +740,29 @@ export default function BettingPage({
           <meta name="viewport" content="width=device-width, initial-scale=1" />
         </Head>
 
-        <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
+        <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 pt-16 md:pt-20">
           <Toaster position="top-right" />
           
-          {/* Header */}
-          <header className="bg-white shadow-sm border-b border-gray-200">
+          {/* Sticky header */}
+          <header className="bg-white shadow-sm border-b border-gray-200 fixed top-0 inset-x-0 z-50">
             <div className="max-w-4xl mx-auto px-4 py-4">
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-3">
-                  <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
-                    <span className="text-white font-bold">P</span>
+                  <div className="w-8 h-8 bg-gradient-to-r from-pink-500 to-yellow-500 rounded-lg flex items-center justify-center">
+                    <span className="text-white font-bold">C</span>
                   </div>
-                  <h1 className="text-xl font-bold text-gray-900">Polymarket Betting</h1>
+                  <h1 className="text-xl font-bold text-gray-900">Competi</h1>
                 </div>
                 
                 <div className="flex items-center space-x-4">
-                  {/* CLOB Connection Status */}
-                  <div className="flex items-center space-x-2">
-                    <div className={`w-2 h-2 rounded-full ${
-                      clobState.isConnected ? 'bg-green-500' : 'bg-red-500'
-                    }`} />
-                    <span className="text-sm text-gray-600">
-                      {clobState.connectionStatus}
-                    </span>
-                  </div>
-
-                  {/* Live refresh indicator */}
-                  <div className="flex items-center space-x-2">
-                    <div className={`w-2 h-2 rounded-full ${
-                      isRefreshingOdds ? 'bg-blue-500 animate-pulse' : 'bg-gray-300'
-                    }`} />
-                    <span className="text-sm text-gray-600">
-                      Live odds
-                    </span>
-                  </div>
-
-                  {/* Session Timer */}
-                  {sessionData.expiresAt && (
-                    <SessionTimer expiresAt={sessionData.expiresAt} />
+                  {/* Username display */}
+                  {sessionData?.discordUser?.username && (
+                    <div className="flex items-center space-x-2">
+                      <div className="w-2 h-2 bg-green-500 rounded-full" />
+                      <span className="text-sm text-gray-700 font-medium truncate max-w-[120px]">
+                        {sessionData.discordUser.username}
+                      </span>
+                    </div>
                   )}
                 </div>
               </div>
@@ -812,7 +797,7 @@ export default function BettingPage({
           <footer className="bg-white border-t border-gray-200 mt-12">
             <div className="max-w-4xl mx-auto px-4 py-8">
               <div className="text-center text-gray-600">
-                <p>Powered by Polymarket • Secure Betting Platform</p>
+                <p>Powered by Competi</p>
                 <p className="text-sm mt-2">
                   Session expires at {new Date(sessionData.expiresAt).toLocaleString()}
                 </p>
