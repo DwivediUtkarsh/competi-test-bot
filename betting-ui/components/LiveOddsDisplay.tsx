@@ -109,21 +109,6 @@ export function LiveOddsDisplay({
 
   return (
     <div className="space-y-6">
-      {/* Connection Status */}
-      <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <span className="text-lg">{getConnectionStatusIcon()}</span>
-            <span className={`font-medium ${getConnectionStatusColor()}`}>
-              {connectionStatus.charAt(0).toUpperCase() + connectionStatus.slice(1)}
-            </span>
-            <span className="text-sm text-gray-600">
-              {isConnected ? 'Live Market Data' : 'Disconnected'}
-            </span>
-          </div>
-        </div>
-      </div>
-
       {/* Live Odds Section */}
       <div className="bg-white rounded-lg shadow-md border border-gray-200">
         <div className="p-4 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-indigo-50">

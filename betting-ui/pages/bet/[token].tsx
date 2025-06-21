@@ -14,6 +14,7 @@ import { LiveOddsDisplay } from '../../components/LiveOddsDisplay';
 import { useCLOBWebSocket } from '../../hooks/useWebSocket';
 import { validateSession, placeBet } from '../../lib/api';
 import { Market, SessionData, BetOutcome } from '../../types';
+import MarketHistoryChart from '../../components/MarketHistoryChart';
 
 interface BettingPageProps {
   token: string;
@@ -778,6 +779,11 @@ export default function BettingPage({
                 onPlaceBet={handlePlaceBet}
                 isPlacingBet={isPlacingBet}
                 sessionData={sessionData}
+              />
+
+              {/* Price History Chart */}
+              <MarketHistoryChart
+                outcomes={market.outcomes}
               />
 
               {/* Live Odds Display (CLOB WebSocket Section) */}
