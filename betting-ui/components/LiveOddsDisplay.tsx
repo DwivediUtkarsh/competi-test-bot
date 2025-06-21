@@ -114,7 +114,7 @@ export function LiveOddsDisplay({
         <div className="p-4 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-indigo-50">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <h3 className="text-lg font-semibold text-gray-900">📊 Live Market Odds</h3>
+              <h3 className="text-lg font-semibold text-gray-900">📊 Market Odds</h3>
               {isConnected && (
                 <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 border border-green-200">
                   LIVE
@@ -162,16 +162,11 @@ export function LiveOddsDisplay({
                   <h4 className="text-lg font-semibold text-gray-900">
                     {outcome}
                   </h4>
-                  {odds && (
-                    <span className="text-sm text-gray-500 bg-white px-2 py-1 rounded border">
-                      Updated: {formatTime(odds.timestamp)}
-                    </span>
-                  )}
                 </div>
                 
                 {odds ? (
                   <>
-                    <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-4">
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
                       <div className="text-center bg-blue-50 p-3 rounded-lg border border-blue-100">
                         <div className="text-2xl font-bold text-blue-600">
                           {odds.probability.toFixed(1)}%
@@ -181,7 +176,7 @@ export function LiveOddsDisplay({
                       
                       {renderOdds(odds)}
                       
-                      <div className="text-center bg-gray-100 p-3 rounded-lg border border-gray-200">
+                      <div className="text-center bg-gray-100 p-3 rounded-lg border border-gray-200 col-span-2 md:col-span-2">
                         <div className="text-2xl font-bold text-gray-700">
                           ${odds.midPrice.toFixed(3)}
                         </div>

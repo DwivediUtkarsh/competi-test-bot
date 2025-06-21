@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Market, BetOutcome, SessionData } from '../types';
 import OddsCard from './OddsCard';
+import { Disclosure } from '@headlessui/react';
 
 interface MarketAndBettingInterfaceProps {
   market: Market;
@@ -62,12 +63,8 @@ export default function MarketAndBettingInterface({
             <h1 className="text-2xl font-bold text-gray-900 mb-2">
               {market.question || market.title || 'Market Information'}
             </h1>
-            <div className="flex items-center gap-4 text-sm text-gray-600">
-              <span>Market ID: {market.id || 'Unknown'}</span>
-              {market.lastUpdated && (
-                <span>Updated: {new Date(market.lastUpdated).toLocaleTimeString()}</span>
-              )}
-              <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+            <div className="flex items-center gap-2 text-xs md:text-sm text-gray-600">
+              <span className={`px-2 py-1 rounded-full font-medium ${
                 market.active 
                   ? 'bg-green-100 text-green-800 border border-green-200' 
                   : 'bg-red-100 text-red-800 border border-red-200'
@@ -76,20 +73,26 @@ export default function MarketAndBettingInterface({
               </span>
             </div>
             {market.description && (
-              <p className="text-gray-700 mt-3 text-sm">{market.description}</p>
+              <Disclosure>
+                {({ open }) => (
+                  <>
+                    {!open && (
+                      <p className="text-gray-700 mt-3 text-sm line-clamp-2">
+                        {market.description}
+                      </p>
+                    )}
+                    {open && (
+                      <Disclosure.Panel className="text-gray-700 mt-3 text-sm">
+                        {market.description}
+                      </Disclosure.Panel>
+                    )}
+                    <Disclosure.Button className="mt-2 text-blue-600 hover:underline text-sm">
+                      {open ? 'Read less' : 'Read more'}
+                    </Disclosure.Button>
+                  </>
+                )}
+              </Disclosure>
             )}
-          </div>
-          
-          {/* User Session Info */}
-          <div className="bg-white/80 backdrop-blur-sm rounded-lg p-4 border border-gray-200 min-w-[200px]">
-            <h3 className="font-semibold text-gray-900 mb-2 text-sm">Session Info</h3>
-            <p className="text-gray-700 text-xs flex items-center gap-1">
-              <span className="w-2 h-2 bg-green-500 rounded-full"></span>
-              {sessionData?.discordUser?.username || 'Anonymous'}
-            </p>
-            <p className="text-gray-600 text-xs mt-1">
-              Server: {sessionData?.guildName || 'Unknown'}
-            </p>
           </div>
         </div>
 
@@ -137,14 +140,58 @@ export default function MarketAndBettingInterface({
         <div className="grid md:grid-cols-2 gap-4 mb-6">
           {outcomes.length > 0 ? (
             outcomes.map((outcome, idx) => (
-              <OddsCard
-                key={outcome.id}
-                title={outcome.title}
-                probability={outcome.price || 0}
-                accentColor={idx === 0 ? 'green' : 'red'}
-                selected={selectedOutcome?.id === outcome.id}
-                onClick={() => setSelectedOutcome(outcome)}
-              />
+              <div key={outcome.id} className="flex flex-col gap-2">
+                <OddsCard
+                  title={outcome.title}
+                  probability={outcome.price || 0}
+                  accentColor={idx === 0 ? 'green' : 'red'}
+                  selected={selectedOutcome?.id === outcome.id}
+                  onClick={() => setSelectedOutcome(outcome)}
+                />
+                {/* Bet form appears under selected outcome */}
+                {selectedOutcome?.id === outcome.id && (
+                  <form onSubmit={handleSubmit} className="bg-gray-50 rounded-lg p-4 border border-gray-200 md:hidden">
+                    <label className="block text-xs md:text-sm font-medium text-gray-700 mb-1">
+                      Bet Amount (USD)
+                    </label>
+                    <input
+                      type="number"
+                      min="1"
+                      step="0.01"
+                      value={betAmount}
+                      onChange={(e) => setBetAmount(e.target.value)}
+                      disabled={showConfirm}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm md:text-base font-semibold"
+                      placeholder="Enter amount..."
+                      required
+                    />
+                    {/* Inline mobile summary */}
+                    {betAmount && parseFloat(betAmount) > 0 && (
+                      <div className="bg-white rounded-lg p-3 border border-gray-200 text-xs space-y-1 mt-4">
+                        <div className="flex justify-between"><span>Outcome:</span><span className="font-semibold">{selectedOutcome.title}</span></div>
+                        <div className="flex justify-between"><span>Bet:</span><span>${betAmount}</span></div>
+                        <div className="flex justify-between"><span>Win:</span><span className="font-semibold text-green-600">${(parseFloat(betAmount)/selectedOutcome.price).toFixed(2)}</span></div>
+                      </div>
+                    )}
+                    <div className="flex gap-3 mt-3">
+                      <button
+                        type="submit"
+                        disabled={isPlacingBet}
+                        className="flex-1 inline-flex justify-center items-center px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-md disabled:opacity-50"
+                      >
+                        {showConfirm ? 'Confirm Bet' : 'Review Bet'}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={resetForm}
+                        className="px-4 py-2 text-sm font-medium text-gray-600 bg-gray-200 rounded-md hover:bg-gray-300"
+                      >
+                        Clear
+                      </button>
+                    </div>
+                  </form>
+                )}
+              </div>
             ))
           ) : (
             <div className="col-span-2 bg-yellow-50 border border-yellow-200 rounded-lg p-6 text-center">
@@ -154,14 +201,18 @@ export default function MarketAndBettingInterface({
           )}
         </div>
 
-        {/* Bet Amount and Actions */}
+        {/* Removed global summary on mobile; kept inlined above */}
+        {false && (
+          <div></div>
+        )}
+
+        {/* Desktop Bet Form */}
         {selectedOutcome && (
-          <form onSubmit={handleSubmit} className="bg-gray-50 rounded-lg p-6 border border-gray-200">
-            <div className="grid md:grid-cols-2 gap-6">
-              {/* Bet Input */}
+          <form onSubmit={handleSubmit} className="hidden md:block bg-gray-50 rounded-lg p-6 border border-gray-200 mt-6">
+            <div className="grid grid-cols-2 gap-6 mb-6">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  💰 Bet Amount (USD)
+                  Bet Amount (USD)
                 </label>
                 <input
                   type="number"
@@ -169,14 +220,14 @@ export default function MarketAndBettingInterface({
                   step="0.01"
                   value={betAmount}
                   onChange={(e) => setBetAmount(e.target.value)}
+                  disabled={showConfirm}
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-lg font-semibold"
                   placeholder="Enter amount..."
                   required
                 />
               </div>
 
-              {/* Bet Summary */}
-              {betAmount && parseFloat(betAmount) > 0 && selectedOutcome.price && (
+              {betAmount && parseFloat(betAmount) > 0 && (
                 <div className="bg-white rounded-lg p-4 border border-gray-200">
                   <h4 className="font-semibold text-gray-900 mb-3 text-sm">📊 Bet Summary</h4>
                   <div className="space-y-2 text-sm">
@@ -205,55 +256,21 @@ export default function MarketAndBettingInterface({
               )}
             </div>
 
-            {/* Action Buttons */}
-            <div className="flex space-x-3 mt-6">
-              {!showConfirm ? (
-                <>
-                  <button
-                    type="submit"
-                    disabled={!betAmount || parseFloat(betAmount) <= 0 || isPlacingBet}
-                    className="flex-1 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white py-3 px-6 rounded-lg transition-colors font-semibold flex items-center justify-center gap-2"
-                  >
-                    <span>👀</span>
-                    Review Bet
-                  </button>
-                  <button
-                    type="button"
-                    onClick={resetForm}
-                    className="px-6 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-medium"
-                  >
-                    Clear
-                  </button>
-                </>
-              ) : (
-                <>
-                  <button
-                    type="submit"
-                    disabled={isPlacingBet}
-                    className="flex-1 bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white py-3 px-6 rounded-lg transition-colors font-semibold flex items-center justify-center gap-2"
-                  >
-                    {isPlacingBet ? (
-                      <>
-                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                        Placing Bet...
-                      </>
-                    ) : (
-                      <>
-                        <span>✅</span>
-                        Confirm Bet
-                      </>
-                    )}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setShowConfirm(false)}
-                    disabled={isPlacingBet}
-                    className="px-6 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-medium disabled:opacity-50"
-                  >
-                    Back
-                  </button>
-                </>
-              )}
+            <div className="flex gap-4">
+              <button
+                type="submit"
+                disabled={isPlacingBet}
+                className="flex-1 inline-flex justify-center items-center px-6 py-3 text-lg font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg disabled:opacity-50"
+              >
+                {showConfirm ? 'Confirm Bet' : 'Review Bet'}
+              </button>
+              <button
+                type="button"
+                onClick={resetForm}
+                className="px-6 py-3 text-lg font-medium text-gray-600 bg-gray-200 rounded-lg hover:bg-gray-300"
+              >
+                Clear
+              </button>
             </div>
           </form>
         )}

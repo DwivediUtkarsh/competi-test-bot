@@ -1,4 +1,4 @@
-import { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, StringSelectMenuBuilder, ComponentType, MessageFlags } from 'discord.js';
+import { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, StringSelectMenuBuilder, ComponentType, MessageFlags, ModalBuilder, TextInputBuilder, TextInputStyle } from 'discord.js';
 import axios from 'axios';
 import { createSession } from '../utils/session.js';
 import { 
@@ -28,7 +28,8 @@ const SPECIAL_NBA_CONDITION_IDS = [
   '0xf2a89afeddff5315e37211b0b0e4e93ed167fba2694cd35c252672d0aca73711'
 ];
 
-const ITEMS_PER_PAGE = 5;
+// Increase number of markets shown on each page from 5 to 10
+const ITEMS_PER_PAGE = 10;
 
 const MARKET_EMOJIS = {
   'NBA': { team1: '🏀', team2: '⚔️', draw: '🤝' },
@@ -116,9 +117,20 @@ const command = {
     return emojis[category] || '📊';
   },
 
+  // Utility to safely embed category names inside component customIds
+  encodeForId(text) {
+    return encodeURIComponent(text);
+  },
+
+  decodeFromId(text) {
+    try { return decodeURIComponent(text); } catch { return text; }
+  },
+
   async handleInteraction(interaction) {
     if (interaction.isStringSelectMenu() && interaction.customId === 'category_select') {
       await this.handleCategorySelection(interaction);
+    } else if (interaction.isModalSubmit() && interaction.customId.startsWith('keyword_filter_')) {
+      await this.handleKeywordFilter(interaction);
     } else if (interaction.isButton()) {
       if (interaction.customId.startsWith('bet_')) {
         await this.handleBetButton(interaction);
@@ -132,62 +144,146 @@ const command = {
 
   async handleCategorySelection(interaction) {
     try {
-      await interaction.deferUpdate();
-      
       const selectedCategory = interaction.values[0];
-      const tagId = AVAILABLE_TAGS[selectedCategory];
-      
-      console.log(`Fetching markets for category: ${selectedCategory} (tag_id: ${tagId})`);
-      
-      // Fetch markets using same logic as shell script
-      const allMarkets = await this.fetchAllMarkets(tagId);
 
-      if (!allMarkets || allMarkets.length === 0) {
-        await interaction.editReply({
-          content: `📭 No active ${selectedCategory} markets found. Try again later!`,
-          components: []
-        });
+      // NBA retains existing flow with sub-type buttons
+      if (selectedCategory === 'NBA') {
+        // Acknowledge the select menu interaction so we can edit the original message
+        await interaction.deferUpdate();
+
+        const tagId = AVAILABLE_TAGS[selectedCategory];
+        const allMarkets = await this.fetchAllMarkets(tagId);
+
+        if (!allMarkets || allMarkets.length === 0) {
+          await interaction.reply({
+            content: `📭 No active ${selectedCategory} markets found. Try again later!`,
+            components: [],
+            flags: MessageFlags.Ephemeral
+          });
+          return;
+        }
+
+        await this.showNBATypeSelection(interaction, allMarkets, selectedCategory);
         return;
       }
 
-      console.log(`Fetched ${allMarkets.length} raw markets for ${selectedCategory}`);
+      // For non-NBA categories, prompt user for a keyword via modal
+      const modal = new ModalBuilder()
+        .setCustomId(`keyword_filter_${selectedCategory}`)
+        .setTitle(`Filter ${selectedCategory} Markets`);
 
-      // Apply filtering logic based on category
-      let filteredMarkets = [];
-      if (selectedCategory === 'NBA') {
-        // Show NBA sub-category selection
-        await this.showNBATypeSelection(interaction, allMarkets, selectedCategory);
-        return;
+      const keywordInput = new TextInputBuilder()
+        .setCustomId('keyword_input')
+        .setLabel('Enter a keyword (team, player, etc.)')
+        .setPlaceholder('e.g. PSG')
+        .setStyle(TextInputStyle.Short)
+        .setRequired(false);
+
+      modal.addComponents(new ActionRowBuilder().addComponents(keywordInput));
+
+      await interaction.showModal(modal);
+    } catch (error) {
+      console.error('Error handling category selection:', error);
+      // If anything goes wrong, fall back to generic error reply
+      if (interaction.deferred || interaction.replied) {
+        await interaction.editReply({
+          content: '❌ Failed to load markets. Please try again later.',
+          components: []
+        });
       } else {
-        // For other categories, apply generic filtering
-        filteredMarkets = this.filterFutureMarketsGeneric(allMarkets);
+        await interaction.reply({
+          content: '❌ Failed to load markets. Please try again later.',
+          components: [],
+          flags: MessageFlags.Ephemeral
+        });
+      }
+    }
+  },
+
+  async handleKeywordFilter(interaction) {
+    try {
+      await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+
+      // Extract category from modal customId
+      const selectedCategory = interaction.customId.replace('keyword_filter_', '');
+      const keywordRaw = (interaction.fields.getTextInputValue('keyword_input') || '').trim();
+      const keyword = keywordRaw.toLowerCase();
+
+      let filteredMarkets = null;
+
+      // Always fetch fresh base markets to ensure keyword "all" returns full set
+      if (selectedCategory.startsWith('NBA_')) {
+        // Example selectedCategory = 'NBA_moneyline'
+        const nbaType = selectedCategory.split('_')[1];
+        const allMarketsNBA = await this.fetchAllMarkets(AVAILABLE_TAGS['NBA']);
+        let nbaMarkets = this.filterFutureMarketsNBA(allMarketsNBA);
+        nbaMarkets = this.filterCorrectMarkets(nbaMarkets);
+        switch (nbaType) {
+          case 'moneyline':
+            nbaMarkets = this.filterNBAMoneylineMarkets(nbaMarkets);
+            break;
+          case 'overunder':
+            nbaMarkets = this.filterNBAOverUnderMarkets(nbaMarkets);
+            break;
+          case 'spread':
+            nbaMarkets = this.filterNBASpreadMarkets(nbaMarkets);
+            break;
+        }
+        filteredMarkets = nbaMarkets;
+      } else {
+        const tagId = AVAILABLE_TAGS[selectedCategory];
+        if (!tagId) {
+          await interaction.editReply({
+            content: '❌ Unknown market category.',
+            components: []
+          });
+          return;
+        }
+
+        const allMarketsGeneric = await this.fetchAllMarkets(tagId);
+        if (!allMarketsGeneric || allMarketsGeneric.length === 0) {
+          await interaction.editReply({
+            content: `📭 No active ${selectedCategory} markets found. Try again later!`,
+            components: []
+          });
+          return;
+        }
+
+        filteredMarkets = this.filterFutureMarketsGeneric(allMarketsGeneric);
         filteredMarkets = this.filterCorrectMarkets(filteredMarkets);
       }
 
-      console.log(`Filtered to ${filteredMarkets.length} markets for ${selectedCategory}`);
+      // Apply keyword filtering unless user typed 'all' (case-insensitive) or left blank
+      if (keyword && keyword !== 'all') {
+        filteredMarkets = filteredMarkets.filter(market => {
+          const text = `${market.question ?? ''} ${market.title ?? ''} ${getEventTitleFromMarket(market) ?? ''}`.toLowerCase();
+          return text.includes(keyword);
+        });
+      }
+
+      console.log(`Keyword filter '${keyword}' reduced to ${filteredMarkets.length} markets`);
 
       if (filteredMarkets.length === 0) {
         await interaction.editReply({
-          content: `📭 No qualifying ${selectedCategory} markets found. Markets may have wide spreads or be expired.`,
+          content: `📭 No markets found for keyword **${keyword || 'N/A'}** in ${selectedCategory}.`,
           components: []
         });
         return;
       }
 
-      // Cache markets
+      // Cache markets for pagination
       interaction.client.marketCache = interaction.client.marketCache || new Map();
-      interaction.client.marketCache.set(`${interaction.user.id}_${selectedCategory}`, { 
-        markets: filteredMarkets, 
-        tagName: selectedCategory 
+      interaction.client.marketCache.set(`${interaction.user.id}_${selectedCategory}`, {
+        markets: filteredMarkets,
+        tagName: selectedCategory.replace('_', ' ')
       });
 
-      // Show paginated markets
-      await this.showPaginatedMarkets(interaction, filteredMarkets, selectedCategory, 0);
-
+      // Show paginated view starting at page 0
+      await this.showPaginatedMarkets(interaction, filteredMarkets, selectedCategory.replace('_', ' '), 0);
     } catch (error) {
-      console.error('Error handling category selection:', error);
+      console.error('Error handling keyword filter modal:', error);
       await interaction.editReply({
-        content: '❌ Failed to load markets. Please try again later.',
+        content: '❌ Failed to filter markets. Please try again later.',
         components: []
       });
     }
@@ -237,16 +333,14 @@ const command = {
 
   async handleNBATypeSelection(interaction) {
     try {
-      await interaction.deferUpdate();
-      
       const [, , nbaType] = interaction.customId.split('_');
       
       // Get cached NBA markets
       const cached = interaction.client.marketCache?.get(`${interaction.user.id}_NBA_ALL`);
       if (!cached) {
-        await interaction.editReply({
+        await interaction.reply({
           content: '❌ NBA market data expired. Please run /markets again.',
-          components: []
+          ephemeral: true
         });
         return;
       }
@@ -271,9 +365,9 @@ const command = {
       console.log(`Filtered NBA ${nbaType} markets: ${filteredMarkets.length}`);
 
       if (filteredMarkets.length === 0) {
-        await interaction.editReply({
+        await interaction.reply({
           content: `📭 No qualifying NBA ${nbaType} markets found.`,
-          components: []
+          ephemeral: true
         });
         return;
       }
@@ -286,15 +380,35 @@ const command = {
         marketType: nbaType
       });
 
-      // Show paginated markets
-      await this.showPaginatedMarkets(interaction, filteredMarkets, `NBA ${nbaType.charAt(0).toUpperCase() + nbaType.slice(1)}`, 0);
+      // Instead of showing immediately, prompt for keyword filter (including option 'all')
+      const modal = new ModalBuilder()
+        .setCustomId(`keyword_filter_NBA_${nbaType}`)
+        .setTitle('Filter NBA Markets');
+
+      const keywordInput = new TextInputBuilder()
+        .setCustomId('keyword_input')
+        .setLabel('Enter a team abbreviation, player, or "all"')
+        .setPlaceholder('e.g. LAL or all')
+        .setStyle(TextInputStyle.Short)
+        .setRequired(false);
+
+      modal.addComponents(new ActionRowBuilder().addComponents(keywordInput));
+
+      await interaction.showModal(modal);
 
     } catch (error) {
       console.error('Error handling NBA type selection:', error);
-      await interaction.editReply({
-        content: '❌ Failed to load NBA markets. Please try again.',
-        components: []
-      });
+      if (interaction.replied || interaction.deferred) {
+        await interaction.followUp({
+          content: '❌ Failed to load NBA markets. Please try again.',
+          ephemeral: true
+        });
+      } else {
+        await interaction.reply({
+          content: '❌ Failed to load NBA markets. Please try again.',
+          ephemeral: true
+        });
+      }
     }
   },
 
@@ -516,8 +630,9 @@ const command = {
     try {
       await interaction.deferUpdate();
       
-      const [, direction, currentPage] = interaction.customId.split('_');
+      const [, direction, encodedCat, currentPage] = interaction.customId.split('_');
       const page = parseInt(currentPage);
+      const categoryName = this.decodeFromId(encodedCat);
       const newPage = direction === 'next' ? page + 1 : page - 1;
       
       // Find cached markets for this user
@@ -530,14 +645,8 @@ const command = {
         return;
       }
 
-      // Look for any cached entry for this user
-      let cached = null;
-      for (const [key, value] of marketCache.entries()) {
-        if (key.startsWith(`${interaction.user.id}_`)) {
-          cached = value;
-          break;
-        }
-      }
+      const cacheKey = `${interaction.user.id}_${categoryName}`;
+      const cached = marketCache.get(cacheKey);
       
       if (!cached) {
         await interaction.editReply({
@@ -622,8 +731,8 @@ const command = {
         .setDescription(liveMarket?.question || 'Market Details')
         .addFields([
           { name: '📊 Current Odds', value: oddsText, inline: false },
-          { name: '💰 Volume', value: formatVolume(liveMarket?.volume), inline: true },
-          { name: '⏰ Ends', value: formatDate(liveMarket?.endDate), inline: true }
+          { name: '💰 Volume', value: this.formatVolume(liveMarket?.volume), inline: true },
+          { name: '⏰ Ends', value: this.formatDate(liveMarket?.endDate), inline: true }
         ])
         .setColor(0x00ff00)
         .setFooter({ text: 'Click below to place your bet securely' });
@@ -685,28 +794,26 @@ const command = {
     const endIndex = Math.min(startIndex + ITEMS_PER_PAGE, markets.length);
     const currentMarkets = markets.slice(startIndex, endIndex);
 
-    const embed = new EmbedBuilder()
-      .setTitle(`${this.getCategoryEmoji(title.split(' ')[0])} ${title} Markets`)
-      .setDescription(`Showing ${startIndex + 1}-${endIndex} of ${markets.length} markets`)
-      .setColor(0x3498db)
-      .setFooter({ text: `Page ${page + 1} of ${totalPages}` });
-
-    currentMarkets.forEach((market, index) => {
+    // Build one embed per event (max 10 embeds = 10 events) for clarity
+    const embeds = currentMarkets.map((market, idx) => {
       const marketString = this.createMarketString(market, title.split(' ')[0]);
-      embed.addFields([
-    {
-          name: `${startIndex + index + 1}. ${getEventTitleFromMarket(market)}`, 
-          value: marketString, 
-          inline: false 
-        }
-      ]);
+      return new EmbedBuilder()
+        .setTitle(`${startIndex + idx + 1}. ${getEventTitleFromMarket(market)}`)
+        .setDescription(marketString)
+        .setColor(0x3498db);
     });
 
-    const components = this.createMarketComponents(currentMarkets, page, totalPages, startIndex);
+    // Add footer to last embed showing pagination info
+    if (embeds.length) {
+      embeds[embeds.length - 1].setFooter({ text: `Page ${page + 1} of ${totalPages}` });
+    }
+
+    const components = this.createMarketComponents(currentMarkets, page, totalPages, startIndex, title);
 
     await interaction.editReply({
-      embeds: [embed],
-      components: components
+      content: `${this.getCategoryEmoji(title.split(' ')[0])} ${title} – Showing ${startIndex + 1}-${endIndex} of ${markets.length}`,
+      embeds,
+      components
     });
   },
 
@@ -765,7 +872,7 @@ const command = {
     }
   },
 
-  createMarketComponents(markets, page, totalPages, startIndex) {
+  createMarketComponents(markets, page, totalPages, startIndex, categoryName) {
     const components = [];
 
     // Create betting buttons for current page markets
@@ -795,7 +902,7 @@ const command = {
       if (page > 0) {
         paginationRow.addComponents(
           new ButtonBuilder()
-            .setCustomId(`page_prev_${page}`)
+            .setCustomId(`page_prev_${this.encodeForId(categoryName)}_${page}`)
             .setLabel('Previous')
             .setStyle(ButtonStyle.Primary)
             .setEmoji('⬅️')
@@ -805,7 +912,7 @@ const command = {
       if (page < totalPages - 1) {
         paginationRow.addComponents(
           new ButtonBuilder()
-            .setCustomId(`page_next_${page}`)
+            .setCustomId(`page_next_${this.encodeForId(categoryName)}_${page}`)
             .setLabel('Next')
             .setStyle(ButtonStyle.Primary)
             .setEmoji('➡️')

@@ -81,8 +81,8 @@ client.on('interactionCreate', async interaction => {
     }
   }
   
-  // Handle button interactions and select menus
-  if (interaction.isButton() || interaction.isStringSelectMenu()) {
+  // Handle buttons, select menus, and modal submissions
+  if (interaction.isButton() || interaction.isStringSelectMenu() || interaction.isModalSubmit()) {
     try {
       // Check if this is a markets command interaction
       const command = client.commands.get('markets');
