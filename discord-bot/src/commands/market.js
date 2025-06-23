@@ -22,6 +22,16 @@ const AVAILABLE_TAGS = {
   "ESPORTS": 64
 };
 
+// Market-specific placeholder examples for the keyword input
+const CATEGORY_PLACEHOLDERS = {
+  'NBA': 'e.g. LAL or all',
+  'MLB': 'e.g. Yankees',
+  'NHL': 'e.g. Bruins',
+  'FIFA Club World Cup': 'e.g. Real Madrid',
+  'UFC': 'e.g. McGregor',
+  'ESPORTS': 'e.g. G2'
+};
+
 // Special NBA Finals condition IDs (same as shell script)
 const SPECIAL_NBA_CONDITION_IDS = [
   '0x6edc6c77c16ef3ba1bcd646159f12f8b8a39528e500dcff95b9220ccfbb75141', // OKC Thunder Finals
@@ -175,7 +185,7 @@ const command = {
       const keywordInput = new TextInputBuilder()
         .setCustomId('keyword_input')
         .setLabel('Enter a keyword (team, player, etc.)')
-        .setPlaceholder('e.g. PSG')
+        .setPlaceholder(CATEGORY_PLACEHOLDERS[selectedCategory] || 'Enter a keyword')
         .setStyle(TextInputStyle.Short)
         .setRequired(false);
 

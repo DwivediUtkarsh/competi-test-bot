@@ -27,9 +27,10 @@ interface OutcomeInfo {
 
 interface Props {
   outcomes: OutcomeInfo[]; // expects two entries YES/NO order
+  simple?: boolean; // compact mode for embedding
 }
 
-export default function MarketHistoryChart({ outcomes }: Props) {
+export default function MarketHistoryChart({ outcomes, simple = false }: Props) {
   const [points, setPoints] = useState<HistoryPoint[]>([]);
   const [range, setRange] = useState<'1H' | '6H' | '1D' | '1W' | '1M' | 'ALL'>('1D');
 
@@ -187,11 +188,24 @@ export default function MarketHistoryChart({ outcomes }: Props) {
   } as const;
 
   return (
-    <div className="bg-white rounded-lg shadow-md border border-gray-200 h-72 md:h-96 pt-4 pb-6 px-4 mt-6">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-2">
-        <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">📈 Price History</h3>
-        <div className="flex gap-1 text-xs font-medium">
+    <div className={`${simple ? '' : 'bg-white rounded-lg shadow-md border border-gray-200 mt-6'} pt-4 pb-6 px-4 h-64 sm:h-80 md:h-96`}>
+      {!simple && (
+        <div className="flex items-center justify-between mb-2">
+          <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">📈 Price History</h3>
+          <div className="flex gap-1 text-xs font-medium">
+            {(['1H','6H','1D','1W','1M','ALL'] as const).map(r => (
+              <button
+                key={r}
+                onClick={() => setRange(r)}
+                className={`px-2 py-1 rounded ${range===r?'bg-blue-600 text-white':'bg-gray-200 text-gray-700'}`}
+              >{r}</button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {simple && (
+        <div className="flex justify-end mb-2 text-xs font-medium gap-1">
           {(['1H','6H','1D','1W','1M','ALL'] as const).map(r => (
             <button
               key={r}
@@ -200,13 +214,21 @@ export default function MarketHistoryChart({ outcomes }: Props) {
             >{r}</button>
           ))}
         </div>
-      </div>
+      )}
 
-      {/* Custom Legend */}
-      <div className="flex gap-4 text-xs font-medium mb-2">
-        <div className="flex items-center gap-1"><span className="w-4 h-1.5 rounded-full inline-block" style={{background:'#3B82F6'}}></span>Yes</div>
-        <div className="flex items-center gap-1"><span className="w-4 h-1.5 rounded-full inline-block" style={{background:'#EF4444'}}></span>No</div>
-      </div>
+      {simple && (
+        <div className="flex gap-4 text-xs font-medium mb-2">
+          <div className="flex items-center gap-1"><span className="w-3 h-1.5 rounded-full inline-block" style={{background:'#3B82F6'}}></span>Yes</div>
+          <div className="flex items-center gap-1"><span className="w-3 h-1.5 rounded-full inline-block" style={{background:'#EF4444'}}></span>No</div>
+        </div>
+      )}
+
+      {!simple && (
+        <div className="flex gap-4 text-xs font-medium mb-2">
+          <div className="flex items-center gap-1"><span className="w-4 h-1.5 rounded-full inline-block" style={{background:'#3B82F6'}}></span>Yes</div>
+          <div className="flex items-center gap-1"><span className="w-4 h-1.5 rounded-full inline-block" style={{background:'#EF4444'}}></span>No</div>
+        </div>
+      )}
 
       <div className="relative w-full h-full">
         <Line data={data} options={options} />

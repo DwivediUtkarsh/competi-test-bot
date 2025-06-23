@@ -10,11 +10,9 @@ import React from 'react';
 import MarketAndBettingInterface from '../../components/MarketAndBettingInterface';
 import LoadingSpinner from '../../components/LoadingSpinner';
 import ErrorBoundary from '../../components/ErrorBoundary';
-import { LiveOddsDisplay } from '../../components/LiveOddsDisplay';
 import { useCLOBWebSocket } from '../../hooks/useWebSocket';
 import { validateSession, placeBet } from '../../lib/api';
 import { Market, SessionData, BetOutcome } from '../../types';
-import MarketHistoryChart from '../../components/MarketHistoryChart';
 
 interface BettingPageProps {
   token: string;
@@ -22,6 +20,12 @@ interface BettingPageProps {
   initialMarket: Market;
   error?: string;
 }
+
+// ADD: enum for toggle
+const VIEW_MODES = {
+  ODDS: 'odds',
+  GRAPH: 'graph'
+} as const;
 
 export default function BettingPage({ 
   token, 
@@ -37,7 +41,7 @@ export default function BettingPage({
   const [isPlacingBet, setIsPlacingBet] = useState(false);
   const [isSessionExpired, setIsSessionExpired] = useState(false);
   const [isRefreshingOdds, setIsRefreshingOdds] = useState(false);
-  
+
   // Extract data for CLOB WebSocket
   const tokenIds = market?.outcomes?.map(o => o.tokenId).filter((id): id is string => Boolean(id)) || [];
   const outcomes = market?.outcomes?.map(o => o.title) || [];
@@ -773,29 +777,17 @@ export default function BettingPage({
           {/* Main Content */}
           <main className="max-w-4xl mx-auto px-4 py-8">
             <div className="space-y-6">
+
               {/* Combined Market Info and Betting Interface */}
               <MarketAndBettingInterface
                 market={market}
                 onPlaceBet={handlePlaceBet}
                 isPlacingBet={isPlacingBet}
                 sessionData={sessionData}
+                clobState={clobState}
               />
 
-              {/* Price History Chart */}
-              <MarketHistoryChart
-                outcomes={market.outcomes}
-              />
-
-              {/* Live Odds Display (CLOB WebSocket Section) */}
-              <LiveOddsDisplay 
-                liveOdds={clobState.liveOdds}
-                executedTrades={clobState.executedTrades}
-                outcomes={outcomes}
-                tokenIds={tokenIds}
-                isConnected={clobState.isConnected}
-                connectionStatus={clobState.connectionStatus}
-                lastUpdate={clobState.lastUpdate}
-              />
+              {/* Odds & Graph now displayed inside Market section */}
             </div>
           </main>
 
