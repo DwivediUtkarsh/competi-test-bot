@@ -2,20 +2,31 @@ import React, { useState } from 'react';
 import { Market, BetOutcome, SessionData } from '../types';
 import OddsCard from './OddsCard';
 import { Disclosure } from '@headlessui/react';
+import { LiveOddsDisplay } from './LiveOddsDisplay';
+import MarketHistoryChart from './MarketHistoryChart';
+
+// View modes for toggle
+const VIEW_MODES = {
+  ODDS: 'odds',
+  GRAPH: 'graph',
+} as const;
 
 interface MarketAndBettingInterfaceProps {
   market: Market;
   onPlaceBet: (outcome: BetOutcome, amount: number) => Promise<void>;
   isPlacingBet: boolean;
   sessionData: SessionData;
+  clobState: any; // lightweight pass-through for odds display
 }
 
 export default function MarketAndBettingInterface({ 
   market, 
   onPlaceBet, 
   isPlacingBet, 
-  sessionData 
+  sessionData,
+  clobState
 }: MarketAndBettingInterfaceProps) {
+  const [viewMode, setViewMode] = useState<typeof VIEW_MODES[keyof typeof VIEW_MODES]>(VIEW_MODES.ODDS);
   const [selectedOutcome, setSelectedOutcome] = useState<BetOutcome | null>(null);
   const [betAmount, setBetAmount] = useState<string>('');
   const [showConfirm, setShowConfirm] = useState(false);
@@ -53,6 +64,10 @@ export default function MarketAndBettingInterface({
 
   // Ensure outcomes is an array
   const outcomes = Array.isArray(market.outcomes) ? market.outcomes : [];
+
+  // Prepare data for odds display
+  const tokenIds = outcomes.map((o: any) => o.tokenId).filter((id: any): id is string => Boolean(id));
+  const outcomeTitles = outcomes.map((o: any) => o.title);
 
   return (
     <div className="bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden">
@@ -121,6 +136,43 @@ export default function MarketAndBettingInterface({
             <p className="text-lg font-bold text-gray-900">
               {market.lastUpdated ? new Date(market.lastUpdated).toLocaleTimeString() : 'N/A'}
             </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Odds / Graph Toggle Block */}
+      <div className="px-6 pt-6">
+        <div className="bg-white rounded-xl shadow-md border border-gray-200 overflow-hidden">
+          {/* Toggle header */}
+          <div className="p-4 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-indigo-50 flex items-center justify-between">
+            <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">📊 Market Insights</h3>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setViewMode(VIEW_MODES.ODDS)}
+                className={`px-3 py-1 text-sm font-medium rounded-md transition-all duration-200 ${viewMode===VIEW_MODES.ODDS?'bg-white shadow text-gray-900':'bg-gray-200 text-gray-700 hover:text-gray-900'}`}
+              >Odds</button>
+              <button
+                onClick={() => setViewMode(VIEW_MODES.GRAPH)}
+                className={`px-3 py-1 text-sm font-medium rounded-md transition-all duration-200 ${viewMode===VIEW_MODES.GRAPH?'bg-white shadow text-gray-900':'bg-gray-200 text-gray-700 hover:text-gray-900'}`}
+              >Graph</button>
+            </div>
+          </div>
+
+          <div className="p-4">
+            {viewMode===VIEW_MODES.ODDS ? (
+              <LiveOddsDisplay
+                liveOdds={clobState.liveOdds}
+                executedTrades={clobState.executedTrades}
+                outcomes={outcomeTitles}
+                tokenIds={tokenIds}
+                isConnected={clobState.isConnected}
+                connectionStatus={clobState.connectionStatus}
+                lastUpdate={clobState.lastUpdate}
+                compact={true}
+              />
+            ) : (
+              <MarketHistoryChart outcomes={outcomes} simple={true} />
+            )}
           </div>
         </div>
       </div>

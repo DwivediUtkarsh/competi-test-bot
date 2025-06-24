@@ -30,6 +30,7 @@ interface LiveOddsDisplayProps {
   isConnected: boolean;
   connectionStatus: string;
   lastUpdate: number | null;
+  compact?: boolean;
 }
 
 type OddsFormat = 'american' | 'european';
@@ -41,7 +42,8 @@ export function LiveOddsDisplay({
   tokenIds, 
   isConnected, 
   connectionStatus,
-  lastUpdate 
+  lastUpdate,
+  compact = false
 }: LiveOddsDisplayProps) {
   const [oddsFormat, setOddsFormat] = useState<OddsFormat>('american');
 
@@ -107,46 +109,38 @@ export function LiveOddsDisplay({
     }
   };
 
+  const sectionBase = compact ? '' : 'bg-white rounded-lg shadow-md border border-gray-200';
+
   return (
-    <div className="space-y-6">
+    <div className={compact ? 'space-y-4' : 'space-y-6'}>
       {/* Live Odds Section */}
-      <div className="bg-white rounded-lg shadow-md border border-gray-200">
-        <div className="p-4 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-indigo-50">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <h3 className="text-lg font-semibold text-gray-900">📊 Market Odds</h3>
-              {isConnected && (
-                <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 border border-green-200">
-                  LIVE
-                </span>
-              )}
-            </div>
+      <div className={sectionBase}>
+        <div className={`${compact ? 'py-2 px-4' : 'p-4 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-indigo-50'}`}>
+          <div className={`${compact ? 'flex items-center justify-end gap-1 flex-wrap' : 'flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3'}`}>
+            {!compact && (
+              <div className="flex items-center gap-2">
+                <h3 className="text-lg font-semibold text-gray-900">📊 Market Odds</h3>
+                {isConnected && (
+                  <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 border border-green-200">
+                    LIVE
+                  </span>
+                )}
+              </div>
+            )}
             
             {/* Odds Format Toggle */}
-            <div className="flex items-center gap-3">
-              <span className="text-sm font-medium text-gray-700">Odds Format:</span>
-              <div className="relative inline-flex bg-gray-200 rounded-lg p-1">
-                <button
-                  onClick={() => setOddsFormat('american')}
-                  className={`px-3 py-1 text-xs font-medium rounded-md transition-all duration-200 ${
-                    oddsFormat === 'american'
-                      ? 'bg-white text-gray-900 shadow-sm'
-                      : 'text-gray-600 hover:text-gray-900'
-                  }`}
-                >
-                  🇺🇸 American
-                </button>
-                <button
-                  onClick={() => setOddsFormat('european')}
-                  className={`px-3 py-1 text-xs font-medium rounded-md transition-all duration-200 ${
-                    oddsFormat === 'european'
-                      ? 'bg-white text-gray-900 shadow-sm'
-                      : 'text-gray-600 hover:text-gray-900'
-                  }`}
-                >
-                  🇪🇺 European
-                </button>
-              </div>
+            <div className="flex items-center gap-1 flex-wrap ml-auto">
+              {!compact && (
+                <span className="text-sm font-medium text-gray-700">Odds Format:</span>
+              )}
+              <button
+                onClick={() => setOddsFormat('american')}
+                className={`px-2 py-1 text-xs font-medium rounded ${oddsFormat==='american' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700'}`}
+              >🇺🇸 American</button>
+              <button
+                onClick={() => setOddsFormat('european')}
+                className={`px-2 py-1 text-xs font-medium rounded ${oddsFormat==='european' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700'}`}
+              >🇪🇺 European</button>
             </div>
           </div>
         </div>
@@ -227,7 +221,8 @@ export function LiveOddsDisplay({
       </div>
 
       {/* Executed Trades Section */}
-      <div className="bg-white rounded-lg shadow-md border border-gray-200">
+      {!compact && (
+      <div className={sectionBase}>
         <div className="p-4 border-b border-gray-200 bg-gradient-to-r from-green-50 to-blue-50">
           <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
             🔄 Recent Trades
@@ -280,6 +275,7 @@ export function LiveOddsDisplay({
           )}
         </div>
       </div>
+      )}
     </div>
   );
 } 
