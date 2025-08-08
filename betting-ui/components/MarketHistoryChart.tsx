@@ -51,8 +51,14 @@ export default function MarketHistoryChart({ outcomes, simple = false }: Props) 
       // Early return if we don't have two outcome token IDs yet (rare but defensive)
       if (outcomes.length < 2) return;
 
-      const tokenYes = outcomes[0].tokenId;
-      const tokenNo = outcomes[1].tokenId;
+      const tokenYes = outcomes[0]?.tokenId;
+      const tokenNo = outcomes[1]?.tokenId;
+
+      // Skip if we don't have valid token IDs
+      if (!tokenYes || !tokenNo) {
+        console.warn('❌ Missing token IDs for price history:', { tokenYes, tokenNo });
+        return;
+      }
 
       // Build request params. For broader ranges, the CLOB API prefers the `interval` shortcut (1h,1d,1w,1m,max).
       const { secondsBack, fidelity } = rangeConfig[range];
